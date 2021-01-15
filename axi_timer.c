@@ -57,10 +57,8 @@ static struct device *my_device;
 static struct cdev *my_cdev;
 static struct timer_info *tp = NULL;
 
-static int i_num = 1;
-static int i_cnt = 0;
 int sekunda,mikrosekunda,sat,minut,milisekunda=0;
-long int stoperica=4294967296;
+long stoperica=4294967296;
 
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
 static void setup_and_start_timer(unsigned int milliseconds);
@@ -116,17 +114,15 @@ static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)
   iowrite32(data | XIL_AXI_TIMER_CSR_INT_OCCURED_MASK,
       tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
-  if(stoperica!=0)
-  {
-    stoperica--;
-  }
+ 
+  stoperica--;
+ 
 
   if(stoperica==0)
   {
     printk(KERN_NOTICE "xilaxitimer_isr: Stopwatch overflow\n");
     data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
     iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK), tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
-    i_cnt = 0;
   }
 
   return IRQ_HANDLED;
@@ -140,7 +136,7 @@ static void setup_and_start_timer(unsigned int microseconds)
   unsigned int timer_load;
   unsigned int zero = 0;
   unsigned int data = 0;
-  timer_load = zero - microseconds*100;
+  timer_load = zero - microseconds*100; //takt 10ns, mnozimo sa 100 da bi bio 1 mikrosekunda
 
   // Disable timer/counter while configuration is in progress
   data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
@@ -277,8 +273,38 @@ int timer_close(struct inode *pinode, struct file *pfile)
 
 ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_t *offset) 
 {
-   
-  convertToStopwatchFormat(stoperica);
+  long time_left;
+  time_left=stoperica; 
+  
+  if(time_left>=3600000000)
+  {
+    sat=time_left/3600000000;
+    time_left=time_left-sat*3600000000;
+  }
+
+  if(time_left>=60000000)
+  {
+    minut=time_left/60000000;
+    time_left=stoperica-minut*60000000;
+  }
+
+  if(time_left>=1000000)
+  {
+    sekunda=time_left/1000000;
+    stoperica=time_left-sekunda*1000000;
+  }
+    
+  if(time_left>=1000)
+  {
+    milisekunda=time_left/1000;
+    time_left=time_left-milisekunda*1000;
+  }
+
+  if(time_left>=1)
+  {
+    mikrosekunda=time_left;
+  }
+  
 
   if(stoperica==0)
   {
@@ -296,10 +322,8 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
 ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length, loff_t *offset) 
 {
   char buff[BUFF_SIZE];
-  int millis = 0;
-  int number = 0;
   int ret = 0;
-  
+  unsigned int data = 0;
   ret = copy_from_user(buff, buffer, length);
   if(ret)
     return -EFAULT;
@@ -320,8 +344,6 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
   if(!strncmp(buff,"stop",4))
   {
     printk(KERN_INFO "xilaxitimer_write: Stopping timer\n");
-
-    unsigned int data=0;
     data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);// Free resources taken in probe
     iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK),
     tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
@@ -350,39 +372,6 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
   return length;
 }
 
-static void convertToStopwatchFormat(unsigned long int stoperica)
-{
-
-  if(stoperica>=3600000000)
-  {
-    sat=stoperica/3600000000;
-    stoperica=stoperica-sat*3600000000;
-  }
-
-  if(stoperica>=60000000)
-  {
-    minut=stoperica/60000000;
-    stoperica=stoperica-minut*60000000;
-  }
-
-  if(stoperica>=1000000)
-  {
-    sekunda=stoperica/1000000;
-    stoperica=stoperica-sekunda*1000000;
-  }
-    
-  if(stoperica>=1000)
-  {
-    milisekunda=stoperica/1000;
-    stoperica=stoperica-milisekunda*1000;
-  }
-
-  if(stoperica>=1)
-  {
-    mikrosekunda=stoperica;
-  }
-
-}
 
 //***************************************************
 // MODULE_INIT & MODULE_EXIT functions

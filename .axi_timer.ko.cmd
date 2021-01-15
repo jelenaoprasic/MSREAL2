@@ -1,0 +1,1 @@
+cmd_/home/jelena/axi_timer_driver/axi_timer.ko := ld -r -m elf_x86_64  -z max-page-size=0x200000 --build-id  -T ./scripts/module-common.lds -o /home/jelena/axi_timer_driver/axi_timer.ko /home/jelena/axi_timer_driver/axi_timer.o /home/jelena/axi_timer_driver/axi_timer.mod.o;  true
