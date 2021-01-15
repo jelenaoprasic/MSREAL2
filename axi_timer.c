@@ -57,9 +57,9 @@ static struct device *my_device;
 static struct cdev *my_cdev;
 static struct timer_info *tp = NULL;
 
-int sekunda,mikrosekunda,sat,minut,milisekunda=0;
-long stoperica=4294967296;
-
+static int i_num = 1;
+static int i_cnt = 0;
+static long stoperica=4294967296;
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
 static void setup_and_start_timer(unsigned int milliseconds);
 static int timer_probe(struct platform_device *pdev);
@@ -114,15 +114,15 @@ static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)
   iowrite32(data | XIL_AXI_TIMER_CSR_INT_OCCURED_MASK,
       tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
- 
+  // Increment number of interrupts that have occured
   stoperica--;
- 
-
+  // Disable Timer after i_num interrupts
   if(stoperica==0)
   {
-    printk(KERN_NOTICE "xilaxitimer_isr: Stopwatch overflow\n");
+    printk(KERN_NOTICE "Timer overflow\n");
     data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
     iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK), tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+    i_cnt = 0;
   }
 
   return IRQ_HANDLED;
@@ -136,7 +136,7 @@ static void setup_and_start_timer(unsigned int microseconds)
   unsigned int timer_load;
   unsigned int zero = 0;
   unsigned int data = 0;
-  timer_load = zero - microseconds*100; //takt 10ns, mnozimo sa 100 da bi bio 1 mikrosekunda
+  timer_load = zero - microseconds*100;
 
   // Disable timer/counter while configuration is in progress
   data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
@@ -273,8 +273,9 @@ int timer_close(struct inode *pinode, struct file *pfile)
 
 ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_t *offset) 
 {
+  int milisekunda,sat,mikrosekunda,minut,sekunda=0;
   long time_left;
-  time_left=stoperica; 
+  time_left=stoperica;
   
   if(time_left>=3600000000)
   {
@@ -305,7 +306,6 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
     mikrosekunda=time_left;
   }
   
-
   if(stoperica==0)
   {
     printk(KERN_INFO "xilaxitimer_write: timer0 overflowed, no time left\n");
@@ -315,63 +315,32 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
   {
     printk(KERN_INFO "preostalo vreme=%d:%d:%d.%d,%d", sat, minut, sekunda, milisekunda, mikrosekunda);
   }
-  return 0;
+  
 
+  printk(KERN_INFO "Succesfully read timer\n");
+  return 0;
 }
 
 ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length, loff_t *offset) 
 {
   char buff[BUFF_SIZE];
+  int millis = 0;
+  int number = 0;
   int ret = 0;
-  unsigned int data = 0;
   ret = copy_from_user(buff, buffer, length);
   if(ret)
     return -EFAULT;
   buff[length] = '\0';
 
-  if(!strncmp(buff,"start",5))
+  ret = sscanf(buff,"%d,%d",&number,&millis);
+  if(!(strncmp(buff,"start",5)))
   {
-    
-    printk(KERN_INFO "xilaxitimer_write: Starting timer\n");
+    printk(KERN_INFO "Startting timer");
     setup_and_start_timer(1);
   }
-  if(!strncmp(buff,"reset",5))
-  {
-    //not yet implemented
-    printk(KERN_INFO "xilaxitimer_write: Resetting timer\n");
-    //setup_and_start_timer(millis);
-  }
-  if(!strncmp(buff,"stop",4))
-  {
-    printk(KERN_INFO "xilaxitimer_write: Stopping timer\n");
-    data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);// Free resources taken in probe
-    iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK),
-    tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
-  }
 
-  /*ret = sscanf(buff,"%d,%d",&number,&millis);
-  if(ret == 2)//two parameters parsed in sscanf
-  {
-
-    if (millis > 40000)
-    {
-      printk(KERN_WARNING "xilaxitimer_write: Maximum period exceeded, enter something less than 40000 \n");
-    }
-    else
-    {
-      printk(KERN_INFO "xilaxitimer_write: Starting timer for %d interrupts. One every %d miliseconds \n",number,millis);
-      i_num = number;
-      setup_and_start_timer(millis);
-    }
-
-  }
-  else
-  {
-    printk(KERN_WARNING "xilaxitimer_write: Wrong format, expected n,t \n\t n-number of interrupts\n\t t-time in ms between interrupts\n");
-  }*/
   return length;
 }
-
 
 //***************************************************
 // MODULE_INIT & MODULE_EXIT functions
