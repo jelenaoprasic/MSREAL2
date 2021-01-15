@@ -59,7 +59,8 @@ static struct timer_info *tp = NULL;
 
 static int i_num = 1;
 static int i_cnt = 0;
-int stoperica=0;
+int sekunda,mikrosekunda,sat,minut,milisekunda=0;
+long int stoperica=4294967296;
 
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
 static void setup_and_start_timer(unsigned int milliseconds);
@@ -133,13 +134,13 @@ static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)
 //***************************************************
 //HELPER FUNCTION THAT RESETS AND STARTS TIMER WITH PERIOD IN MILISECONDS
 
-static void setup_and_start_timer(unsigned int milliseconds)
+static void setup_and_start_timer(unsigned int microseconds)
 {
   // Disable Timer Counter
   unsigned int timer_load;
   unsigned int zero = 0;
   unsigned int data = 0;
-  timer_load = zero - milliseconds*100000;
+  timer_load = zero - microseconds*100;
 
   // Disable timer/counter while configuration is in progress
   data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
@@ -276,6 +277,8 @@ int timer_close(struct inode *pinode, struct file *pfile)
 
 ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_t *offset) 
 {
+   
+  convertToStopwatchFormat(stoperica);
 
   if(stoperica==0)
   {
@@ -284,7 +287,7 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
 
   else 
   {
-    printk(KERN_INFO "xilaxitimer_write: %d\n", stoperica);
+    printk(KERN_INFO "preostalo vreme=%d:%d:%d.%d,%d", sat, minut, sekunda, milisekunda, mikrosekunda);
   }
   return 0;
 
@@ -304,7 +307,7 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
 
   if(!strncmp(buff,"start",5))
   {
-    stoperica==50000;
+    
     printk(KERN_INFO "xilaxitimer_write: Starting timer\n");
     setup_and_start_timer(1);
   }
@@ -345,6 +348,40 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
     printk(KERN_WARNING "xilaxitimer_write: Wrong format, expected n,t \n\t n-number of interrupts\n\t t-time in ms between interrupts\n");
   }*/
   return length;
+}
+
+static void convertToStopwatchFormat(unsigned long int stoperica)
+{
+
+  if(stoperica>=3600000000)
+  {
+    sat=stoperica/3600000000;
+    stoperica=stoperica-sat*3600000000;
+  }
+
+  if(stoperica>=60000000)
+  {
+    minut=stoperica/60000000;
+    stoperica=stoperica-minut*60000000;
+  }
+
+  if(stoperica>=1000000)
+  {
+    sekunda=stoperica/1000000;
+    stoperica=stoperica-sekunda*1000000;
+  }
+    
+  if(stoperica>=1000)
+  {
+    milisekunda=stoperica/1000;
+    stoperica=stoperica-milisekunda*1000;
+  }
+
+  if(stoperica>=1)
+  {
+    mikrosekunda=stoperica;
+  }
+
 }
 
 //***************************************************
