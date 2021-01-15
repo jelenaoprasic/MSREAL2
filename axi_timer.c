@@ -60,6 +60,7 @@ static struct timer_info *tp = NULL;
 static int i_num = 1;
 static int i_cnt = 0;
 static long stoperica=4294967296;
+
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
 static void setup_and_start_timer(unsigned int milliseconds);
 static int timer_probe(struct platform_device *pdev);
@@ -286,13 +287,13 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
   if(time_left>=60000000)
   {
     minut=time_left/60000000;
-    time_left=stoperica-minut*60000000;
+    time_left=time_left-minut*60000000;
   }
 
   if(time_left>=1000000)
   {
     sekunda=time_left/1000000;
-    stoperica=time_left-sekunda*1000000;
+    time_left=time_left-sekunda*1000000;
   }
     
   if(time_left>=1000)
@@ -313,7 +314,7 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
 
   else 
   {
-    printk(KERN_INFO "preostalo vreme=%d:%d:%d.%d,%d", sat, minut, sekunda, milisekunda, mikrosekunda);
+    printk(KERN_INFO "Time left=%d:%d:%d.%d,%d", sat, minut, sekunda, milisekunda, mikrosekunda);
   }
   
 
@@ -327,18 +328,33 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
   int millis = 0;
   int number = 0;
   int ret = 0;
+  unsigned int data=0;
+  
   ret = copy_from_user(buff, buffer, length);
   if(ret)
     return -EFAULT;
   buff[length] = '\0';
 
-  ret = sscanf(buff,"%d,%d",&number,&millis);
   if(!(strncmp(buff,"start",5)))
   {
     printk(KERN_INFO "Startting timer");
     setup_and_start_timer(1);
   }
 
+  else if(!(strncmp(buff,"stop",4))) 
+  {
+
+    data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);// Free resources taken in probe
+    iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK),
+    tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+     printk(KERN_INFO "Stopping timer");
+  }
+
+  else if(!(strncmp(buff,"restart",7)))
+  {     
+    printk(KERN_INFO "Restarting timer");
+    stoperica=4294967296;
+  }
   return length;
 }
 
