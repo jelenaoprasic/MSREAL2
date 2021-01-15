@@ -115,21 +115,23 @@ static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)
   iowrite32(data | XIL_AXI_TIMER_CSR_INT_OCCURED_MASK,
       tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
-  // Increment number of interrupts that have occured
+//interrupt occurs every 1us, value of stoperica decrements also 1us
   stoperica--;
-  // Disable Timer after i_num interrupts
-  if(stoperica==0)
+ 
+  if(stoperica==0) 
   {
     printk(KERN_NOTICE "Timer overflow\n");
     data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
     iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK), tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+    stoperica=4294967296;
+
     i_cnt = 0;
   }
 
   return IRQ_HANDLED;
 }
 //***************************************************
-//HELPER FUNCTION THAT RESETS AND STARTS TIMER WITH PERIOD IN MILISECONDS
+//HELPER FUNCTION THAT RESETS AND STARTS TIMER WITH PERIOD IN MICROSECONDS
 
 static void setup_and_start_timer(unsigned int microseconds)
 {
@@ -137,7 +139,7 @@ static void setup_and_start_timer(unsigned int microseconds)
   unsigned int timer_load;
   unsigned int zero = 0;
   unsigned int data = 0;
-  timer_load = zero - microseconds*100;
+  timer_load = zero - microseconds*100; //1us
 
   // Disable timer/counter while configuration is in progress
   data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
@@ -329,7 +331,7 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
   int number = 0;
   int ret = 0;
   unsigned int data=0;
-  
+
   ret = copy_from_user(buff, buffer, length);
   if(ret)
     return -EFAULT;
@@ -343,17 +345,17 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
 
   else if(!(strncmp(buff,"stop",4))) 
   {
-
     data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);// Free resources taken in probe
     iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK),
     tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
-     printk(KERN_INFO "Stopping timer");
+    printk(KERN_INFO "Stopping timer");
   }
 
   else if(!(strncmp(buff,"restart",7)))
   {     
     printk(KERN_INFO "Restarting timer");
     stoperica=4294967296;
+    setup_and_start_timer(1);
   }
   return length;
 }
