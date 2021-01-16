@@ -60,7 +60,9 @@ static struct timer_info *tp = NULL;
 int endRead = 0;
 long stoperica = 0;
 long stoperica1 = 0;
+int  milisekunda, sat , mikrosekunda, minut, sekunda = 0;
 
+void time_format(long time);
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
 static void setup_and_start_timer(unsigned int milliseconds);
 static int timer_probe(struct platform_device *pdev);
@@ -277,29 +279,12 @@ int timer_close(struct inode *pinode, struct file *pfile)
 
 ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_t *offset) 
 {
- int  milisekunda, sat , mikrosekunda, minut, sekunda = 0; 
  int ret;
  int len=0;
  char buff[BUFF_SIZE];
- sat = stoperica/1000000/3600;
- minut = (stoperica/1000000-(sat*3600))/60%60; 
- sekunda = (stoperica-(sat*3600)-(minut*60))/1000000%60;
- stoperica1=stoperica-(sat*=3600000000);
- stoperica1=stoperica1-(minut*60000000);
- stoperica1=stoperica1-(sekunda*1000000);
- 	
- if(stoperica1 >= 1000)
- {
-   	 milisekunda = stoperica1/1000;
-   	 stoperica1 = stoperica1-milisekunda*1000;
- }
-
- if(stoperica1 >= 1)
- {
-   	mikrosekunda = stoperica1;
-
- }
-
+ 
+ time_format(stoperica); 
+ 
  if(stoperica >= 0)
  {  
 	if(endRead)
@@ -326,6 +311,28 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
  printk(KERN_INFO "Succesfully read timer\n");
 }
 
+void time_format (long time)
+ {
+ stoperica1=0;
+ sat = time/1000000/3600;
+ minut = (time/1000000 - (sat*3600))/60%60; 
+ sekunda = (time - (sat*3600) - (minut*60))/1000000%60;
+ stoperica1 = time - (sat*=3600000000);
+ stoperica1 = stoperica1 - (minut*60000000);
+ stoperica1 = stoperica1 - (sekunda*1000000);
+ 	
+ if(stoperica1 >= 1000 && stoperica != 0 )
+ {
+   	 milisekunda = stoperica1/1000;
+   	 stoperica1 = stoperica1-milisekunda*1000;
+ }
+
+ if(stoperica1 >= 1 && stoperica != 0)
+ {
+   	mikrosekunda = stoperica1;
+
+ }
+}
 ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length, loff_t *offset) 
 {
   char buff[BUFF_SIZE];
