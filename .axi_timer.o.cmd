@@ -1,8 +1,8 @@
-cmd_/root/MSREAL2/axi_timer.o := gcc -Wp,-MD,/root/MSREAL2/.axi_timer.o.d  -nostdinc -isystem /usr/lib/gcc/arm-linux-gnueabihf/4.9/include -I./arch/arm/include -I./arch/arm/include/generated  -I./include -I./arch/arm/include/uapi -I./arch/arm/include/generated/uapi -I./include/uapi -I./include/generated/uapi -include ./include/linux/kconfig.h -include ./include/linux/compiler_types.h -D__KERNEL__ -mlittle-endian -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -fshort-wchar -Werror-implicit-function-declaration -Wno-format-security -std=gnu89 -fno-PIE -DCC_HAVE_ASM_GOTO -fno-dwarf2-cfi-asm -fno-ipa-sra -mabi=aapcs-linux -mfpu=vfp -funwind-tables -marm -Wa,-mno-warn-deprecated -D__LINUX_ARM_ARCH__=7 -march=armv7-a -msoft-float -Uarm -fno-delete-null-pointer-checks -Os -Wno-maybe-uninitialized --param=allow-store-data-races=0 -Wframe-larger-than=1024 -fstack-protector-strong -Wno-unused-but-set-variable -fomit-frame-pointer -fno-var-tracking-assignments -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -fno-merge-all-constants -fmerge-constants -fno-stack-check -fconserve-stack -Werror=implicit-int -Werror=strict-prototypes -Werror=date-time  -DMODULE  -DKBUILD_BASENAME='"axi_timer"' -DKBUILD_MODNAME='"axi_timer"' -c -o /root/MSREAL2/.tmp_axi_timer.o /root/MSREAL2/axi_timer.c
+cmd_/root/axi_timer_driver/axi_timer.o := gcc -Wp,-MD,/root/axi_timer_driver/.axi_timer.o.d  -nostdinc -isystem /usr/lib/gcc/arm-linux-gnueabihf/4.9/include -I./arch/arm/include -I./arch/arm/include/generated  -I./include -I./arch/arm/include/uapi -I./arch/arm/include/generated/uapi -I./include/uapi -I./include/generated/uapi -include ./include/linux/kconfig.h -include ./include/linux/compiler_types.h -D__KERNEL__ -mlittle-endian -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -fshort-wchar -Werror-implicit-function-declaration -Wno-format-security -std=gnu89 -fno-PIE -DCC_HAVE_ASM_GOTO -fno-dwarf2-cfi-asm -fno-ipa-sra -mabi=aapcs-linux -mfpu=vfp -funwind-tables -marm -Wa,-mno-warn-deprecated -D__LINUX_ARM_ARCH__=7 -march=armv7-a -msoft-float -Uarm -fno-delete-null-pointer-checks -Os -Wno-maybe-uninitialized --param=allow-store-data-races=0 -Wframe-larger-than=1024 -fstack-protector-strong -Wno-unused-but-set-variable -fomit-frame-pointer -fno-var-tracking-assignments -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -fno-merge-all-constants -fmerge-constants -fno-stack-check -fconserve-stack -Werror=implicit-int -Werror=strict-prototypes -Werror=date-time  -DMODULE  -DKBUILD_BASENAME='"axi_timer"' -DKBUILD_MODNAME='"axi_timer"' -c -o /root/axi_timer_driver/.tmp_axi_timer.o /root/axi_timer_driver/axi_timer.c
 
-source_/root/MSREAL2/axi_timer.o := /root/MSREAL2/axi_timer.c
+source_/root/axi_timer_driver/axi_timer.o := /root/axi_timer_driver/axi_timer.c
 
-deps_/root/MSREAL2/axi_timer.o := \
+deps_/root/axi_timer_driver/axi_timer.o := \
   include/linux/kconfig.h \
     $(wildcard include/config/cpu/big/endian.h) \
     $(wildcard include/config/booger.h) \
@@ -761,6 +761,6 @@ deps_/root/MSREAL2/axi_timer.o := \
   arch/arm/include/asm/sections.h \
   include/asm-generic/sections.h \
 
-/root/MSREAL2/axi_timer.o: $(deps_/root/MSREAL2/axi_timer.o)
+/root/axi_timer_driver/axi_timer.o: $(deps_/root/axi_timer_driver/axi_timer.o)
 
-$(deps_/root/MSREAL2/axi_timer.o):
+$(deps_/root/axi_timer_driver/axi_timer.o):

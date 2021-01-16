@@ -36,7 +36,7 @@
 #define XIL_AXI_TIMER_CSR_CAPTURE_MODE_MASK 0x00000001
 
 #define BUFF_SIZE 20
-#define DRIVER_NAME "timer"
+#define DRIVER_NAME "axi_timer"
 #define DEVICE_NAME "xilaxitimer"
 
 MODULE_LICENSE("Dual BSD/GPL");
@@ -56,11 +56,11 @@ static struct class *my_class;
 static struct device *my_device;
 static struct cdev *my_cdev;
 static struct timer_info *tp = NULL;
-int endRead=0;
-static int i_num = 1;
-static int i_cnt = 0;
-long stoperica=0;
-long stoperica1=0;
+
+int endRead = 0;
+long stoperica = 0;
+long stoperica1 = 0;
+
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
 static void setup_and_start_timer(unsigned int milliseconds);
 static int timer_probe(struct platform_device *pdev);
@@ -121,14 +121,12 @@ static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)
   stoperica++;
  
 
-  if(stoperica==4294967296) 
+  if(stoperica == 4294967296) 
   {
     printk(KERN_NOTICE "Timer overflow\n");
     data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
     iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK), tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
-
-    i_cnt = 0;
   }
 
   return IRQ_HANDLED;
@@ -279,70 +277,59 @@ int timer_close(struct inode *pinode, struct file *pfile)
 
 ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_t *offset) 
 {
-	int  milisekunda, sat , mikrosekunda, minut, sekunda = 0; 
-	int ret;
-	int len=0;
-	int i =0;
-	char buff[BUFF_SIZE];
-	int tajmer[5];
-	sat = stoperica/1000000/3600;
-	minut = (stoperica/1000000-(sat*3600))/60%60; 
-	sekunda = (stoperica-(sat*3600)-(minut*60))/1000000%60;
+ int  milisekunda, sat , mikrosekunda, minut, sekunda = 0; 
+ int ret;
+ int len=0;
+ char buff[BUFF_SIZE];
+ sat = stoperica/1000000/3600;
+ minut = (stoperica/1000000-(sat*3600))/60%60; 
+ sekunda = (stoperica-(sat*3600)-(minut*60))/1000000%60;
+ stoperica1=stoperica-(sat*=3600000000);
+ stoperica1=stoperica1-(minut*60000000);
+ stoperica1=stoperica1-(sekunda*1000000);
+ 	
+ if(stoperica1 >= 1000)
+ {
+   	 milisekunda = stoperica1/1000;
+   	 stoperica1 = stoperica1-milisekunda*1000;
+ }
 
+ if(stoperica1 >= 1)
+ {
+   	mikrosekunda = stoperica1;
 
-	stoperica1=stoperica-(sat*=3600000000);
-	stoperica1=stoperica1-(minut*60000000);
-	stoperica1=stoperica1-(sekunda*1000000);
- 	if(stoperica1>=1000)
- 	 {
-   		 milisekunda=stoperica1/1000;
-   		 stoperica1=stoperica1-milisekunda*1000;
-  	 }
+ }
 
- 	 if(stoperica1>=1)
- 	 {
-   		 mikrosekunda=stoperica1;
-
-  	 }
-	tajmer[0]=sat;
-	tajmer[1]=minut;
-	tajmer[2]=sekunda;
-	tajmer[2]=milisekunda;
-	tajmer[4]=mikrosekunda;
-
-	if(stoperica>0)
+ if(stoperica >= 0)
+ {  
+	if(endRead)
 	{
-
-		if(endRead)
-		{
-			endRead=0;
-			return 0;
-		} 
-
-	len=scnprintf(buff,BUFF_SIZE, "%d:%d:%d.%d,%d \n",sat,minut, sekunda,milisekunda,mikrosekunda);
-	ret=copy_to_user(buffer, buff, len);
-	if(ret)
-		return -EFAULT;
-	endRead=1;
- 	return len;
-	}
-
-	else
-	{
-		printk(KERN_INFO "Stopwatch is off\n");
+		endRead = 0;
 		return 0;
-	}
+	} 
+
+ len=scnprintf(buff,BUFF_SIZE, "%d:%d:%d.%d,%d \n",sat,minut, sekunda,milisekunda,mikrosekunda);
+ ret=copy_to_user(buffer, buff, len);
+ if(ret)
+	return -EFAULT;
+ endRead=1;
+ return len;
+ }
+
+ else
+ {
+	printk(KERN_INFO "Stopwatch is off\n");
+	return 0;
+ }
  
-	printk(KERN_INFO "Time left=%d:%d:%d.%d,%d", sat, minut, sekunda, milisekunda, mikrosekunda);
- 	printk(KERN_INFO "Succesfully read timer\n");
+ printk(KERN_INFO "Time left=%d:%d:%d.%d,%d", sat, minut, sekunda, milisekunda, mikrosekunda);
+ printk(KERN_INFO "Succesfully read timer\n");
 }
 
 ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length, loff_t *offset) 
 {
   char buff[BUFF_SIZE];
-  int millis = 0;
-  int number = 0;
-  int ret = 0;
+   int ret = 0;
   unsigned int data=0;
 
   ret = copy_from_user(buff, buffer, length);
@@ -364,12 +351,10 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
  	printk(KERN_INFO "Stopping timer");
   }
 
-  else if(!(strncmp(buff,"restart",7)))
+  else if(!(strncmp(buff,"reset",5)))
   {     
-	printk(KERN_INFO "Restarting timer");
+	printk(KERN_INFO "Resetting timer");
     	stoperica=0;
-	setup_and_start_timer(1);
-	stoperica == 0; 
  }
   return length;
 }

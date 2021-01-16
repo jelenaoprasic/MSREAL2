@@ -1,3 +1,3 @@
-/root/MSREAL2/axi_timer.ko
-/root/MSREAL2/axi_timer.o
+/root/axi_timer_driver/axi_timer.ko
+/root/axi_timer_driver/axi_timer.o
 
