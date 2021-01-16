@@ -1,1 +1,1 @@
-cmd_/home/jelena/axi_timer_driver/axi_timer.ko := ld -r -m elf_x86_64  -z max-page-size=0x200000 --build-id  -T ./scripts/module-common.lds -o /home/jelena/axi_timer_driver/axi_timer.ko /home/jelena/axi_timer_driver/axi_timer.o /home/jelena/axi_timer_driver/axi_timer.mod.o;  true
+cmd_/root/MSREAL2/axi_timer.ko := ld -r  -EL -T ./scripts/module-common.lds -T ./arch/arm/kernel/module.lds  --build-id  -o /root/MSREAL2/axi_timer.ko /root/MSREAL2/axi_timer.o /root/MSREAL2/axi_timer.mod.o ;  true

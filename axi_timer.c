@@ -56,11 +56,11 @@ static struct class *my_class;
 static struct device *my_device;
 static struct cdev *my_cdev;
 static struct timer_info *tp = NULL;
-
+int endRead=0;
 static int i_num = 1;
 static int i_cnt = 0;
-static long stoperica=4294967296;
-
+long stoperica=0;
+long stoperica1=0;
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
 static void setup_and_start_timer(unsigned int milliseconds);
 static int timer_probe(struct platform_device *pdev);
@@ -116,14 +116,16 @@ static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)
       tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
 //interrupt occurs every 1us, value of stoperica decrements also 1us
-  stoperica--;
+
+
+  stoperica++;
  
-  if(stoperica==0) 
+  if(stoperica==50000000000) 
   {
     printk(KERN_NOTICE "Timer overflow\n");
     data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
     iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK), tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
-    stoperica=4294967296;
+
 
     i_cnt = 0;
   }
@@ -276,39 +278,63 @@ int timer_close(struct inode *pinode, struct file *pfile)
 
 ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_t *offset) 
 {
-  int milisekunda,sat,mikrosekunda,minut,sekunda=0;
-  long time_left;
-  time_left=stoperica;
-  
-  if(time_left>=3600000000)
+	int  milisekunda, sat , mikrosekunda, minut, sekunda = 0;  
+	sat = stoperica/1000000/3600;
+	minut = (stoperica/1000000-(sat*3600))/60%60; 
+	sekunda = (stoperica-(sat*36000)-(minut*60))/1000000%60;
+	//milisekunda = (stoperica-(sat*3600)-(minut*60)-(sekunda*1000))/1000%1000;
+//	mikrosekunda = (stoperica - (sat*3600)-(minut*60)-sekunda-(milisekunda*1000))/1000000%1000000;
+ /* 
+
+	int ret;
+	int len=0;
+	int i =0;
+	char buff[BUFF_SIZE];
+	if(endRead)
+	{
+		endRead=0;
+		return 0;
+	} 
+
+	buff[0]='sekunda';
+	
+	ret=copy_to_user(buffer, buff, len);
+
+	if(ret)
+		return -EFAULT;
+	endRead=1;
+
+	return 0;
+   
+  if(stoperica>=3600000000)
   {
-    sat=time_left/3600000000;
-    time_left=time_left-sat*3600000000;
+    sat=stoperica/3600000000;
+    stoperica1=stoperica-sat*3600000000;
   }
 
-  if(time_left>=60000000)
+  if(stoperica1>=60000000)
   {
-    minut=time_left/60000000;
-    time_left=time_left-minut*60000000;
+    minut=stoperica1/60000000;
+    stoperica1=stoperica1-minut*60000000;
   }
 
-  if(time_left>=1000000)
+  if(stoperica1>=1000000)
   {
-    sekunda=time_left/1000000;
-    time_left=time_left-sekunda*1000000;
+    sekunda=stoperica1/1000000;
+    stoperica1=stoperica1-sekunda*1000000;
   }
     
-  if(time_left>=1000)
+  if(stoperica1>=1000)
   {
-    milisekunda=time_left/1000;
-    time_left=time_left-milisekunda*1000;
+    milisekunda=stoperica1/1000;
+    stoperica=stoperica-milisekunda*1000;
   }
 
-  if(time_left>=1)
+  if(stoperica1>=1)
   {
-    mikrosekunda=time_left;
+    mikrosekunda=stoperica1;
   }
-  
+
   if(stoperica==0)
   {
     printk(KERN_INFO "xilaxitimer_write: timer0 overflowed, no time left\n");
@@ -316,12 +342,13 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
 
   else 
   {
-    printk(KERN_INFO "Time left=%d:%d:%d.%d,%d", sat, minut, sekunda, milisekunda, mikrosekunda);
+    printk(KERN_INFO "Time left=%ld:%ld:%ld.%ld,%ld", sat, minut, sekunda, milisekunda, mikrosekunda);
   }
   
-
-  printk(KERN_INFO "Succesfully read timer\n");
-  return 0;
+	  /&*/
+	printk("proslo je %d sati. %d minuta i %d sekundi" , sat, minut, sekunda);	
+ 	printk(KERN_INFO "Succesfully read timer\n");
+ return 0;
 }
 
 ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length, loff_t *offset) 
@@ -354,7 +381,7 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
   else if(!(strncmp(buff,"restart",7)))
   {     
     printk(KERN_INFO "Restarting timer");
-    stoperica=4294967296;
+    stoperica=0;
     setup_and_start_timer(1);
   }
   return length;
