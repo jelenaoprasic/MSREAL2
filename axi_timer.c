@@ -309,11 +309,15 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
  
  printk(KERN_INFO "Time left=%d:%d:%d.%d,%d", sat, minut, sekunda, milisekunda, mikrosekunda);
  printk(KERN_INFO "Succesfully read timer\n");
+
+
 }
 
 void time_format (long time)
  {
- stoperica1=0;
+ stoperica1 = 0;
+ mikrosekunda = 0;
+ milisekunda = 0;
  sat = time/1000000/3600;
  minut = (time/1000000 - (sat*3600))/60%60; 
  sekunda = (time - (sat*3600) - (minut*60))/1000000%60;
@@ -355,13 +359,16 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
    	 data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);// Free resources taken in probe
    	 iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK),
    	 tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
- 	printk(KERN_INFO "Stopping timer");
+ 	 printk(KERN_INFO "Stopping timer");
   }
 
   else if(!(strncmp(buff,"reset",5)))
   {     
+	data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);// Free resources taken in probe
+   	iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK),
+   	tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 	printk(KERN_INFO "Resetting timer");
-    	stoperica=0;
+    	stoperica = 0;
  }
   return length;
 }
