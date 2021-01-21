@@ -14,15 +14,17 @@
 #include <linux/slab.h>//kmalloc kfree
 #include <linux/platform_device.h>//platform driver
 #include <linux/ioport.h>//ioremap
-
 #include <linux/interrupt.h> //irqreturn_t, request_irq
 
 // REGISTER CONSTANTS
-#define XIL_AXI_TIMER_TCSR_OFFSET 0x0
-#define XIL_AXI_TIMER_TLR_OFFSET    0x4
-#define XIL_AXI_TIMER_TCR_OFFSET    0x8
+#define XIL_AXI_TIMER_TCSR_OFFSET 0x0 //TCR0 OFFSET
+#define XIL_AXI_TIMER_TLR_OFFSET    0x4 //TLR0 OFFSET
+#define XIL_AXI_TIMER_TCR_OFFSET    0x8 //TCR0 OFFSET
+#define XIL_AXI_TIMER_TCSR1_OFFSET 0x10 //TCR1 OFFSET
+#define XIL_AXI_TIMER_TLR1_OFFSET    0x14 //TLR1 OFFSET
+#define XIL_AXI_TIMER_TCR1_OFFSET    0x18 //TCR1 OFFSET
 
-#define XIL_AXI_TIMER_CSR_CASC_MASK 0x00000800
+#define XIL_AXI_TIMER_CSR_CASC_MASK 0x00000800 //ENABLE CASCADE MODE
 #define XIL_AXI_TIMER_CSR_ENABLE_ALL_MASK 0x00000400
 #define XIL_AXI_TIMER_CSR_ENABLE_PWM_MASK 0x00000200
 #define XIL_AXI_TIMER_CSR_INT_OCCURED_MASK 0x00000100
@@ -36,7 +38,7 @@
 #define XIL_AXI_TIMER_CSR_CAPTURE_MODE_MASK 0x00000001
 
 #define BUFF_SIZE 20
-#define DRIVER_NAME "axi_timer"
+#define DRIVER_NAME "axi_driver"
 #define DEVICE_NAME "xilaxitimer"
 
 MODULE_LICENSE("Dual BSD/GPL");
@@ -107,23 +109,16 @@ MODULE_DEVICE_TABLE(of, timer_of_match);
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)   
 {      
   unsigned int data = 0;
-
-  // Check Timer Counter Value
   data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR_OFFSET);
-  
 
-  // Clear Interrupt
+ // Clear Interrupt
   data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
   iowrite32(data | XIL_AXI_TIMER_CSR_INT_OCCURED_MASK,
       tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
-//interrupt occurs every 1us, value of stoperica decrements also 1us
-
-
   stoperica++;
  
-
-  if(stoperica == 4294967296) 
+  if(stoperica == 18446744037000) 
   {
     printk(KERN_NOTICE "Timer overflow\n");
     data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
@@ -142,6 +137,7 @@ static void setup_and_start_timer(unsigned int microseconds)
   unsigned int timer_load;
   unsigned int zero = 0;
   unsigned int data = 0;
+
   timer_load = zero - microseconds*100; //1us
 
   // Disable timer/counter while configuration is in progress
@@ -149,7 +145,7 @@ static void setup_and_start_timer(unsigned int microseconds)
   iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK),
       tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
-  // Set initial value in load register
+  // Set initial value in TLR0 
   iowrite32(timer_load, tp->base_addr + XIL_AXI_TIMER_TLR_OFFSET);
 
   // Load initial value into counter from load register
@@ -160,6 +156,25 @@ static void setup_and_start_timer(unsigned int microseconds)
   data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
   iowrite32(data & ~(XIL_AXI_TIMER_CSR_LOAD_MASK),
       tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+
+  // Set initial value in TLR1
+  iowrite32(timer_load, tp->base_addr + XIL_AXI_TIMER_TLR1_OFFSET);
+
+  // Load initial value into counter from load register
+  data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR1_OFFSET);
+  iowrite32(data | XIL_AXI_TIMER_CSR_LOAD_MASK,
+      tp->base_addr + XIL_AXI_TIMER_TCSR1_OFFSET);
+
+  data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR1_OFFSET);
+  iowrite32(data & ~(XIL_AXI_TIMER_CSR_LOAD_MASK),
+      tp->base_addr + XIL_AXI_TIMER_TCSR1_OFFSET);
+
+
+  //Set the CASC bit in TCSR0
+  data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+  iowrite32(data | XIL_AXI_TIMER_CSR_CASC_MASK,
+      tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+
 
   // Enable interrupts and autoreload, rest should be zero
   iowrite32(XIL_AXI_TIMER_CSR_ENABLE_INT_MASK | XIL_AXI_TIMER_CSR_AUTO_RELOAD_MASK,
@@ -282,7 +297,12 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
  int ret;
  int len=0;
  char buff[BUFF_SIZE];
- 
+  // unsigned int counter1,counter0,counter = 0;
+  // Check Timer Counter Value
+  // counter1 = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR1_OFFSET);
+  //counter0 = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR_OFFSET);
+  // counter = counter1 + counter0;
+  // stoperica = counter; 
  time_format(stoperica); 
  
  if(stoperica >= 0)
