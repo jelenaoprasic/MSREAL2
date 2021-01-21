@@ -16,3 +16,4 @@ Očekivan format ispisa je sati: minute: sekunde. milisekunde, mikrosekunde.
 
 Isključivanje drajvera iz kernela je moguće komandom: _rmmod axi_timer.ko_.
 
+ 
